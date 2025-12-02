@@ -1,15 +1,22 @@
 import pygame
 import random as rand
+import time
 
 '''
 NEXT:
-decisiveness 
-color rep 
-- r
-- g
-- b
-- sum
+Play as fish
+Colorless background problem
+Overall more leathal
+- decisiveness?
+color rep for non imediatly observable phenotypes
+- viision
+- agro
+- deci
+- maybe I should wait for more attributes to decide
 movement affects scarriness
+diff movement types
+camping?
+give them neurons
 '''
 
 POS_X_MAX = 1200
@@ -19,6 +26,9 @@ COORD_Y_MAX = COORD_X_MAX // 2
 CELL_SIZE = int(POS_X_MAX / COORD_X_MAX)
 FAM = 0
 all_coords = []
+FRAMES = 0
+ALL_SPECIES = []
+FULL_SPACE = []
 
 for x in range(COORD_X_MAX):
     for y in range(COORD_Y_MAX):
@@ -27,6 +37,7 @@ for x in range(COORD_X_MAX):
 running = True
 pygame.init()
 screen = pygame.display.set_mode((POS_X_MAX, POS_Y_MAX))
+total_fish_newness = 0
 background = (7, 10, 20)
 ALL_FOOD = []
 ALL_FISH = []
@@ -47,32 +58,64 @@ def in_bound(coord):
 class Food():
     def __init__(self, start):
         self.coords = start
+        self.flakey = rand.randint(3, 15) 
+        self.weight = rand.randint(1, 30) 
 
     def move(self):
-        self.coords = (self.coords[0] + rand.choice([-1] + [0] * 9 +[1]), self.coords[1] + 1)
-        if self.coords[1] > COORD_Y_MAX or self.coords[0] > COORD_X_MAX:
-            ALL_FOOD.remove(self)
+        #why are ther false full spaces?
+        if rand.randint(0, self.weight): 
+            new_coords = (self.coords[0] + rand.choice([-1] + [0] * self.flakey +[1]), self.coords[1] + 1)
+            if new_coords[1] > COORD_Y_MAX - 1 or new_coords[0] > COORD_X_MAX - 1 or new_coords[0] < 1 or new_coords in FULL_SPACE:
+                if self.coords not in FULL_SPACE:
+                    FULL_SPACE.append(self.coords)
+                return
+            if self.coords in FULL_SPACE:
+                FULL_SPACE.remove(self.coords)
+            self.coords = new_coords
 
 
 class Fish():
     def __init__(self, id=None, genes=()):
         if genes:
-            self.cells, self.color, self.speed, self.agro, self.division, self.vision, self.id = genes
+            self.cells, self.color, self.speed, self.agro, self.division, self.vision, self.decisivness, self.id = genes
         else:
             self.cells = [(rand.randint(0, COORD_X_MAX - 1), rand.randint(0, COORD_Y_MAX - 1))]
             if not rand.randint(0, 2):
                 self.cells.append((self.cells[0][0] - 1, self.cells[0][1]))
-            self.color = (rand.randint(0, 255), rand.randint(0, 255), rand.randint(0, 255))
-            self.speed = rand.randint(20, 80) #find bits
-            self.agro = rand.randint(0, 100)
-            self.division = rand.randint(4, 90)
-            self.vision = rand.randint(10, 30)
+            self.speed = rand.randint(10, 30)
+            self.agro = rand.randint(0, 100) 
+            self.division = rand.randint(4, 100)
+            self.speed += self.division // 10
+            self.vision = rand.randint(10, 40)
+            self.decisivness = rand.randint(0, 99)
             self.id = id
+            #vision score = (self.vision - 10) / 31
+            #agro score = self.agro / 101
+            #speed_score = (self.speed - 10) / 21
+            if (self.agro / 101) > 1:
+                r = 255
+            else:
+                r = 255 * (self.agro / 101)
+
+            if ((self.speed - 10) / 21) > 1:
+                g = 255
+            else:
+                g = 255 * ((self.speed - 10) / 21)
+
+            if ((self.vision - 10) / 31) > 1:
+                b = 255
+            else:
+                b = 255 * ((self.vision - 10) / 31)
+
+            self.color = (r, g, b)
         self.energy = 200
         self.food_targets = []
         self.fish_targets = []
         self.hunt = False
+        self.danger = []
         self.targ_count = 0
+        self.target = None
+        ALL_SPECIES.append(self.id)
 
     def radar_and_lock(self):
         self.danger = []
@@ -118,7 +161,7 @@ class Fish():
             self.decay()
 
         if len(self.cells) > self.division:
-            ALL_FISH.append(Fish(genes = (self.cells[self.division // 2:], self.color, self.speed, self.agro, self.division, self.vision, self.id)))
+            ALL_FISH.append(Fish(genes = (self.cells[self.division // 2:], self.color, self.speed, self.agro, self.division, self.vision, self.decisivness, self.id)))
             ALL_FISH[-1].mutate()
             self.cells = self.cells[:self.division//2]
 
@@ -135,6 +178,8 @@ class Fish():
             coords = self.target.coords
             if self.cells[0] == coords:
                 ALL_FOOD.remove(self.target)
+                if self.target.coords in FULL_SPACE:
+                    FULL_SPACE.remove(self.target.coords)
                 self.cells.append(self.cells[0])
                 return
             
@@ -246,7 +291,20 @@ class Fish():
         for gene in [self.speed, self.agro, self.division, self.vision]:
             gene += rand.randint(-2, 2)
         if not rand.randint(0, 15):
-            self.id += 1
+            global FAM
+            self.id = FAM
+            FAM += 1
+
+
+
+def background_check():
+    #if FRAMES > 50:
+
+    ALL_SPECIES.sort()
+    len(ALL_SPECIES) - len(past_fish)
+    pass
+
+    
 
 
 # hendersons = Fish(genes = ([(10, 10), (10, 11)], (255, 0, 0), 7, 100, 4, 200, -1))
@@ -261,7 +319,8 @@ class Fish():
 
 
 while running:
-    screen.fill(background)
+    time.sleep(0.01)
+    FRAMES += 1
     keys = pygame.key.get_pressed()
     mouse_pos = pygame.mouse.get_pos()
 
@@ -270,30 +329,34 @@ while running:
         if event.type == pygame.QUIT:
             running = False
 
-        if event.type == pygame.MOUSEBUTTONDOWN:
-            ALL_FOOD.append(Food(pos_to_coord(mouse_pos)))
+    if pygame.mouse.get_pressed()[0] and not FRAMES % 6:
+        ALL_FOOD.append(Food(pos_to_coord(mouse_pos)))
+
 
     if len(ALL_FISH) < 60:
-        if not rand.randint(0, 200):
-            if rand.randint(0, 5):
+        if not rand.randint(0, 30):
+            if rand.randint(0, 3): # 1/41 * 4/5 = 4/205; FRAMES * (4 / 205) = predicted FAM
                 ALL_FISH.append(Fish(FAM))
                 FAM += 1
             else:
                 ALL_FOOD.append(Food((rand.randint(0, COORD_X_MAX), 0)))
 
+    #drawing starts here
+    
+    screen.fill(background)
+            
     for each_food in ALL_FOOD:
-        if not rand.randint(0, 100):
+        if not rand.randint(0, 19):
             each_food.move()
-        pygame.draw.rect(screen, (205, 157, 20), coord_to_rect(each_food.coords), border_radius = CELL_SIZE // 4)
+        pygame.draw.rect(screen, (20, 157, 25), coord_to_rect(each_food.coords), border_radius = CELL_SIZE // 4)
 
     for fish in ALL_FISH:
-        if (not fish.hunt and rand.randint(0, 100)) or not rand.randint(-1000, fish.targ_count * 2): #replace 2 with desisiveness
+        if (not fish.hunt and rand.randint(0, 8)) or not rand.randint(-170, int(0.7 * (fish.decisivness // (fish.targ_count + 1)))):
             fish.radar_and_lock()
-        if not rand.randint(0, (fish.speed)):
+        if rand.randint(-100, (fish.speed)) > 0:
             fish.move()
         for cell in fish.cells:
             pygame.draw.rect(screen, fish.color, coord_to_rect(cell))
-
 
     pygame.display.flip()
 
