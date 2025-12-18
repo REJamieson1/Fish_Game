@@ -5,14 +5,13 @@ import time
 '''
 NEXT:
 Play as fish
+- fish shape
+- death
+- 2nd fish
+fix shape/gaps in fish
+Accuracy
 Colorless background problem
 Overall more leathal
-- decisiveness?
-color rep for non imediatly observable phenotypes
-- viision
-- agro
-- deci
-- maybe I should wait for more attributes to decide
 movement affects scarriness
 diff movement types
 camping?
@@ -41,7 +40,6 @@ total_fish_newness = 0
 background = (7, 10, 20)
 ALL_FOOD = []
 ALL_FISH = []
-
 
 def pos_to_coord(pos):
     return (int(pos[0] // CELL_SIZE), int(pos[1] // CELL_SIZE))
@@ -93,14 +91,14 @@ class Fish():
             #agro score = self.agro / 101
             #speed_score = (self.speed - 10) / 21
             if (self.agro / 101) > 1:
-                r = 255
-            else:
-                r = 255 * (self.agro / 101)
-
-            if ((self.speed - 10) / 21) > 1:
                 g = 255
             else:
-                g = 255 * ((self.speed - 10) / 21)
+                g = 255 * (self.agro / 101)
+
+            if ((self.speed - 10) / 21) > 1:
+                r = 255
+            else:
+                r = 255 * ((self.speed - 10) / 21)
 
             if ((self.vision - 10) / 31) > 1:
                 b = 255
@@ -184,7 +182,7 @@ class Fish():
                 return
             
         else:
-            if (not self.hunt and self.danger) or rand.randint(0,len(self.danger)): #put agro in here
+            if (not self.hunt and self.danger) or rand.randint(0,len(self.danger)): #put -agro here
                 pred = rand.choice(self.danger)
                 if pred.cells:
                     coords = pred.cells[0]
@@ -237,12 +235,16 @@ class Fish():
         if in_bound(new_coords):
             del self.cells[-1]
             self.cells.insert(0, new_coords)
-            
-        a, b = rand.choice([(0, 1),(0, -1),(1, 0),(-1, 0)])
-        side_coords = (self.cells[0][0] + a, self.cells[0][1] + b)
-        if side_coords not in set(self.cells) and in_bound(side_coords):
-            del self.cells[-1]
-            self.cells.insert(1, side_coords)
+
+        self.thickify()
+
+
+    def thickify(self): # shape atribute here
+        # a, b = rand.choice([(0, 1),(0, -1),(1, 0),(-1, 0)])
+        # side_coords = (self.cells[0][0] + a, self.cells[0][1] + b)
+        # if side_coords not in set(self.cells) and in_bound(side_coords):
+        #     del self.cells[-1]
+        #     self.cells.insert(1, side_coords)
 
         if len(self.cells) > 5:
             a, b = rand.choice([(0, 1),(0, -1),(1, 0),(-1, 0)])
@@ -296,6 +298,10 @@ class Fish():
             FAM += 1
 
 
+def my_fish_catch(fish):
+    # What is the fastest way to find a fish the fish and cell of fish at a given coordinate?
+    pass
+    
 
 def background_check():
     #if FRAMES > 50:
@@ -306,6 +312,7 @@ def background_check():
 
     
 
+my_fish = Fish(genes = ([(60, 30), (61, 30)], (75, 107, 80), 29, 50, 50, 20, 80, -1))
 
 # hendersons = Fish(genes = ([(10, 10), (10, 11)], (255, 0, 0), 7, 100, 4, 200, -1))
 # hendersons.energy = 1600
@@ -313,25 +320,57 @@ def background_check():
 # benson.energy = 16000000
 # the_pacifisht = Fish(genes = ([(30, 10), (30, 11)], (150, 150, 150), 7, 0, 50, 200, -2))
 # the_pacifisht.energy = 16000
+ALL_FISH.append(my_fish)
 # ALL_FISH.append(hendersons)
 # ALL_FISH.append(benson)
 # ALL_FISH.append(the_pacifisht)
-
 
 while running:
     time.sleep(0.01)
     FRAMES += 1
     keys = pygame.key.get_pressed()
     mouse_pos = pygame.mouse.get_pos()
+    direction_options = []
 
 
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
 
+            
+
     if pygame.mouse.get_pressed()[0] and not FRAMES % 6:
         ALL_FOOD.append(Food(pos_to_coord(mouse_pos)))
 
+    if keys[pygame.K_LEFT]:
+        direction_options.append((my_fish.cells[0][0] - 1, my_fish.cells[0][1]))
+    if keys[pygame.K_RIGHT]:
+        direction_options.append((my_fish.cells[0][0] + 1, my_fish.cells[0][1]))
+    if keys[pygame.K_UP]:
+        direction_options.append((my_fish.cells[0][0], my_fish.cells[0][1] - 1))
+    if keys[pygame.K_DOWN]:
+        direction_options.append((my_fish.cells[0][0], my_fish.cells[0][1] + 1))
+    if direction_options and rand.randint(-1, (my_fish.speed)) > 0 and not FRAMES % 3:
+        
+        if len(direction_options) > 1:
+            new_coord = rand.choice(direction_options)
+        else:
+            new_coord = rand.choices([direction_options[0] , [rand.choice([(my_fish.cells[0][0] - 1, my_fish.cells[0][1]), (my_fish.cells[0][0] + 1, my_fish.cells[0][1]), (my_fish.cells[0][0], my_fish.cells[0][1] - 1), (my_fish.cells[0][0], my_fish.cells[0][1] + 1)])][0]], weights=[10, 1], k=1)[0]
+        if in_bound(new_coord):
+            del my_fish.cells[-1]
+            my_fish.cells.insert(0, new_coord)
+
+        if not rand.randint(0, 25):
+            my_fish.thickify()
+
+        my_fish.energy -= 1
+        if my_fish.energy < 0:
+            my_fish.decay()
+
+    if not (FRAMES + 2) % 8:
+        my_fish.energy -= 1
+        if my_fish.energy < 0:
+            my_fish.decay()
 
     if len(ALL_FISH) < 60:
         if not rand.randint(0, 30):
@@ -345,18 +384,42 @@ while running:
     
     screen.fill(background)
             
-    for each_food in ALL_FOOD:
+    for food in ALL_FOOD:
         if not rand.randint(0, 19):
-            each_food.move()
-        pygame.draw.rect(screen, (20, 157, 25), coord_to_rect(each_food.coords), border_radius = CELL_SIZE // 4)
+            food.move()
+        if not FRAMES % 4:
+            if food.coords == my_fish.cells[0]:
+                ALL_FOOD.remove(food)
+                if food in FULL_SPACE:
+                    FULL_SPACE.remove(food.coords)
+                
+                my_fish.cells.append(food.coords)
+
+        pygame.draw.rect(screen, (20, 157, 25), coord_to_rect(food.coords), border_radius = CELL_SIZE // 4)
 
     for fish in ALL_FISH:
-        if (not fish.hunt and rand.randint(0, 8)) or not rand.randint(-170, int(0.7 * (fish.decisivness // (fish.targ_count + 1)))):
-            fish.radar_and_lock()
-        if rand.randint(-100, (fish.speed)) > 0:
-            fish.move()
-        for cell in fish.cells:
-            pygame.draw.rect(screen, fish.color, coord_to_rect(cell))
+        if fish.id > 1:
+            if ((not fish.hunt and rand.randint(0, 8)) or not rand.randint(-170, int(0.7 * (fish.decisivness // (fish.targ_count + 1))))):
+                fish.radar_and_lock()
+            if rand.randint(-100, (fish.speed)) > 0: 
+                fish.move()
+            if not (FRAMES + 2) % 4: 
+                if len(fish.cells) <= len(my_fish.cells) / 2:
+                    if my_fish.cells[0] in fish.cells:
+                        fish.cells.remove(my_fish.cells[0])
+                        if not len(fish.cells):
+                            ALL_FISH.remove(fish)
+                        my_fish.cells.append(my_fish.cells[0])
+
+            for cell in fish.cells:
+                pygame.draw.rect(screen, fish.color, coord_to_rect(cell))
+
+        else:
+            if not rand.randint(0, 3):
+                my_fish.thickify()
+
+    for cell in my_fish.cells:
+        pygame.draw.rect(screen, my_fish.color, coord_to_rect(cell))
 
     pygame.display.flip()
 
