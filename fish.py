@@ -4,25 +4,38 @@ import time
 
 '''
 NEXT:
-player.thickify
 single player start position
 game mode option text
+not pixelated
 4th menu option
+sand
 secret fish
 design a fish
-Play as fish
-- fish shape
-fix shape/gaps in fish
+multicolor fish
+    rand color within list
+    color range
 Accuracy allil
 Colorless background problem
 Overall more leathal
 movement affects scarriness
-diff movement types
-camping?
+water momentum vector field
+diff behavior types
+    wall muation
+        lose one direction abilltity
+        slower exoughstion
+    plant
+        eats one grows two
+        does not move beside growing
+    pathogen
+        single cell
+        eats any size
+    venom
+        turns target to food
+death and poison
 give them brains
+they aren't running away well enough
 clean whole code 😩
 '''
-
 POS_X_MAX = 1200
 POS_Y_MAX = 600
 COORD_X_MAX = 120
@@ -38,6 +51,7 @@ SIMULATE_GAME = False
 PLAYER_GAME = False
 TWO_PLAYER_GAME = False
 NUMBER_OF_PLAYER_FISH = 0
+NUMBER_OF_GENUS = 2
 
 for x in range(COORD_X_MAX):
     for y in range(COORD_Y_MAX):
@@ -48,6 +62,7 @@ pygame.init()
 screen = pygame.display.set_mode((POS_X_MAX, POS_Y_MAX))
 total_fish_newness = 0
 background = (7, 10, 20)
+menu_font = pygame.font.Font('freesansbold.ttf', 30)
 ALL_FOOD = []
 ALL_FISH = []
 
@@ -85,7 +100,7 @@ class Food():
 class Fish():
     def __init__(self, id=None, genes=()):
         if genes:
-            self.cells, self.color, self.speed, self.agro, self.division, self.vision, self.decisivness, self.id = genes
+            self.cells, self.color, self.speed, self.agro, self.division, self.vision, self.decisivness, self.id, self.genus = genes 
         else:
             self.cells = [(rand.randint(0, COORD_X_MAX - 1), rand.randint(0, COORD_Y_MAX - 1))]
             if not rand.randint(0, 2):
@@ -93,13 +108,14 @@ class Fish():
             self.speed = rand.randint(10, 30)
             self.agro = rand.randint(0, 100) 
             self.division = rand.randint(4, 100)
-            self.speed += self.division // 10
+            self.speed += self.division // 8
             self.vision = rand.randint(10, 40)
             self.decisivness = rand.randint(0, 99)
             self.id = id
+            self.genus = rand.choices(range(NUMBER_OF_GENUS), weights=[5, 1], k=1)[0]
             #vision score = (self.vision - 10) / 31
             #agro score = self.agro / 101
-            #speed_score = (self.speed - 10) / 21
+            #speed score = (self.speed - 10) / 21
             if (self.agro / 101) > 1:
                 g = 255
             else:
@@ -125,6 +141,7 @@ class Fish():
         self.target = None
         ALL_SPECIES.append(self.id)
 
+
     def radar_and_lock(self):
         self.danger = []
         self.targ_count = 0
@@ -149,7 +166,8 @@ class Fish():
                                             self.fish_targets.append(fish)
                                             self.targ_count += 1
                                 elif len(fish.cells) >= len(self.cells) / 2:
-                                    self.danger.append(fish)
+                                    for _ in fish.cells:
+                                        self.danger.append(fish)
 
         tag_type = rand.choice(['food'] * (100 - self.agro) + ['fish'] * (self.agro))
         if tag_type == 'food':
@@ -162,16 +180,21 @@ class Fish():
         else:
             self.target = None
 
+
     def move(self):
+
+
         self.energy -= 1
         if self.energy < 0:
             self.decay()
 
+        #mitosis
         if len(self.cells) > self.division:
-            ALL_FISH.append(Fish(genes = (self.cells[self.division // 2:], self.color, self.speed, self.agro, self.division, self.vision, self.decisivness, self.id)))
+            ALL_FISH.append(Fish(genes = (self.cells[self.division // 2:], self.color, self.speed, self.agro, self.division, self.vision, self.decisivness, self.id, self.genus)))
             ALL_FISH[-1].mutate()
             self.cells = self.cells[:self.division//2]
 
+        #eating target
         if self.target in set(ALL_FISH):
             coords = self.target.cells[0]
             if self.cells[0] == coords:
@@ -187,6 +210,7 @@ class Fish():
                         ALL_FISH.remove(self.target)
                 return
             
+        #eating food
         elif self.target in set(ALL_FOOD):
             coords = self.target.coords
             if self.cells[0] == coords:
@@ -196,8 +220,9 @@ class Fish():
                 self.cells.append(self.cells[0])
                 return
             
+        #run away
         else:
-            if (not self.hunt and self.danger) or rand.randint(0,len(self.danger)): #put -agro here
+            if (not self.hunt and self.danger) or rand.randint(0,len(self.danger)): #put negative agro here
                 pred = rand.choice(self.danger)
                 if pred.cells:
                     coords = pred.cells[0]
@@ -251,10 +276,19 @@ class Fish():
             del self.cells[-1]
             self.cells.insert(0, new_coords)
 
-        self.thickify() # rand based on size
+        self.build_genus(new_coords) #move this line to give it more power
 
 
-    def thickify(self): # shape atribute here
+    def build_genus(self, new_coords):
+        if self.genus == 0:
+            self.genus_classic()
+        elif self.genus == 1:
+            self.genus_snake()
+        elif self.genus == 2:
+            self.genus_wall_ball(new_coords)
+
+
+    def genus_classic(self): # genus atribute here
         # a, b = rand.choice([(0, 1),(0, -1),(1, 0),(-1, 0)])
         # side_coords = (self.cells[0][0] + a, self.cells[0][1] + b)
         # if side_coords not in set(self.cells) and in_bound(side_coords):
@@ -294,7 +328,16 @@ class Fish():
                             del self.cells[-1]
                             self.cells.insert(1, side_coords)
     
-    def thickify_2(self):
+
+    def genus_snake(self):
+        pass
+
+
+    def genus_wall_ball(self, new_coords):
+        
+
+
+    def genus_other_classic(self):
         for _ in range(len(self.cells) // 2):
             a, b = rand.choice([(0, 1),(0, -1),(1, 0),(-1, 0)])
             side_coords = (self.cells[0][0] + a, self.cells[0][1] + b)
@@ -302,6 +345,7 @@ class Fish():
                 del self.cells[-1]
                 self.cells.insert(1, side_coords)
     
+
     def decay(self):
         if len(self.cells) == 1:
             ALL_FOOD.append(Food(self.cells[0]))
@@ -315,21 +359,25 @@ class Fish():
             for _ in range(int(len(self.cells) // 8)):
                 del self.cells[-1]
             self.energy = 100
-                
+
+
     def mutate(self):
         '''
-        self.cells, self.color, self.speed, self.agro, self.division, self.vision, self.id
+        self.cells, self.color, self.speed, self.agro, self.division, self.vision, self.id, self.genus
         '''
         new_color = (self.color[0] + rand.randint(-15, 15), self.color[1] + rand.randint(-15, 15), self.color[2] + rand.randint(-15, 15))
         if 0 <= list(new_color)[0] <= 255 and 0 <= list(new_color)[1] <= 255 and 0 <= list(new_color)[2] <= 255:
             self.color = new_color
         for gene in [self.speed, self.agro, self.division, self.vision]:
             gene += rand.randint(-2, 2)
+        if not rand.randint(0, 115):
+            self.genus = rand.randint(range(NUMBER_OF_GENUS)) #remember to update
         if not rand.randint(0, 15):
             global FAM
             self.id = FAM
             FAM += 1
     
+
 
 def background_check():
     #if FRAMES > 50:
@@ -366,8 +414,7 @@ def my_move(directions, fish):
             del fish.cells[-1]
             fish.cells.insert(0, new_coord)
 
-        if not rand.randint(0, 3):
-            fish.thickify_2()
+        fish.build_genus()
 
         fish.energy -= 1
         if fish.energy < 0:
@@ -437,6 +484,10 @@ def present_start_menu():
     pygame.draw.rect(screen, (220, 220, 220), pygame.Rect(450, 260, 300, 40))
     pygame.draw.rect(screen, (220, 220, 220), pygame.Rect(450, 320, 300, 40))
     pygame.draw.rect(screen, (220, 220, 220), pygame.Rect(450, 380, 300, 40))
+    screen.blit(menu_font.render('Zen Tank', True, (0, 0, 0)), (535, 205))
+    screen.blit(menu_font.render('One Fish', True, (0, 0, 0)), (535, 265))
+    screen.blit(menu_font.render('Two Fish', True, (0, 0, 0)), (535, 325))
+    screen.blit(menu_font.render('Coming Soonish', True, (0, 0, 0)), (480, 385))
 
 
 def select_game_mode(coords):
@@ -467,8 +518,8 @@ def select_game_mode(coords):
     return False
 
 
-my_fish = Fish(genes = ([(80, 30), (80, 31)], (220, 60, 60), 29, 50, 50, 20, 80, -1)) # (75, 107, 80)
-my_fish_2 = Fish(genes = ([(40, 30), (40, 31)], (60, 60, 220), 29, 50, 50, 20, 80, -2))
+my_fish = Fish(genes = ([(80, 30), (80, 31)], (220, 60, 60), 29, 50, 50, 20, 80, -1, 0)) # (75, 107, 80)
+my_fish_2 = Fish(genes = ([(40, 30), (40, 31)], (60, 60, 220), 29, 50, 50, 20, 80, -2, 0))
 # hendersons = Fish(genes = ([(10, 10), (10, 11)], (255, 0, 0), 7, 100, 4, 200, -1))
 # hendersons.energy = 1600
 # benson = Fish(genes = ([(70, 10), (70, 11), (71, 10), (72, 10), (73, 10)], (80, 200, 200), 26, 90, 400, 200, -2))
@@ -479,13 +530,6 @@ my_fish_2 = Fish(genes = ([(40, 30), (40, 31)], (60, 60, 220), 29, 50, 50, 20, 8
 # ALL_FISH.append(hendersons)
 # ALL_FISH.append(benson)
 # ALL_FISH.append(the_pacifisht)
-
-if PLAYER_GAME:
-    ALL_FISH.append(my_fish)
-    NUMBER_OF_PLAYER_FISH += 1
-    if TWO_PLAYER_GAME:
-        ALL_FISH.append(my_fish_2)
-        NUMBER_OF_PLAYER_FISH += 1
 
 while running:
     time.sleep(0.01)
@@ -500,6 +544,8 @@ while running:
     if pygame.mouse.get_pressed()[0] and not FRAMES % 6:
         if select_game_mode(mouse_pos):
             START_MENU = False
+            if PLAYER_GAME and not TWO_PLAYER_GAME:
+                my_fish.cells = [(60, 30), (60, 31)]
         elif SIMULATE_GAME:
             ALL_FOOD.append(Food(pos_to_coord(mouse_pos)))
 
@@ -534,8 +580,9 @@ while running:
                     my_eat_food(my_fish_2, food)
 
             pygame.draw.rect(screen, (20, 157, 25), coord_to_rect(food.coords), border_radius = CELL_SIZE // 4)
-
+  
         for fish in ALL_FISH:
+     
             if fish.id:
                 if ((not fish.hunt and rand.randint(0, 8)) or not rand.randint(-170, int(0.7 * (fish.decisivness // (fish.targ_count + 1))))):
                     fish.radar_and_lock()
@@ -549,13 +596,6 @@ while running:
 
                 for cell in fish.cells:
                     pygame.draw.rect(screen, fish.color, coord_to_rect(cell))
-
-            elif rand.randint(0, 3): # why did it work before the menu?
-                if PLAYER_GAME:
-                    my_fish.thickify()
-                    if TWO_PLAYER_GAME:
-                        my_fish_2.thickify()
-
 
         if not (FRAMES + 3) % 3 and TWO_PLAYER_GAME:
             player_attack(my_fish, my_fish_2)
