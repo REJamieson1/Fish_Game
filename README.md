@@ -27,7 +27,7 @@ The “fish” act more like single cellular organisms at times. For the most pa
 - Continuous traits to implement 
   - Predator precision 
   - Phenotypic plasticity 
-  - Mutation factor
+  - Epi mutation factor
   
 - Discrete traits to implement
   - Pathogen 
@@ -56,8 +56,7 @@ The “fish” act more like single cellular organisms at times. For the most pa
 
 **What next:**
 - Bugs
-  - Game player fish being eaten
-  - Secretly massive wall ball
+  - 
 - Menu
   - User time scale 
   - User tank size 
